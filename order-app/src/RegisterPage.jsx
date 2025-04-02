@@ -23,7 +23,7 @@ const RegisterPage = () => {
 
         try {
             // Send registration request to the backend
-            const response = await axios.post('http://localhost:3000/register', {
+            const response = await axios.post('https://order-app-backend-5362.vercel.app/register', {
                 username,
                 password,
             });
