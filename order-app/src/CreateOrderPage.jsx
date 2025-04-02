@@ -8,7 +8,7 @@ const CreateOrderPage = ({ token }) => {
 
     const handleCreate = async () => {
         try {
-            await axios.post('http://localhost:3000/orders', { order_details: orderDetails }, {
+            await axios.post('https://order-app-backend-5362.vercel.app/orders', { order_details: orderDetails }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             navigate('/orders');
