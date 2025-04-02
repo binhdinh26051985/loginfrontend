@@ -10,7 +10,7 @@ const LoginPage = ({ setToken }) => {
 
     const handleLogin = async () => {
         try {
-            const response = await axios.post('http://localhost:3000/login', { username, password });
+            const response = await axios.post('https://order-app-backend-5362.vercel.app/login', { username, password });
             setToken(response.data.token); // Use setToken to update the token state
             navigate('/orders'); // Redirect to the orders page
         } catch (error) {
