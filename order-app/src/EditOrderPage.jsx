@@ -10,7 +10,7 @@ const EditOrderPage = ({ token }) => {
     useEffect(() => {
         const fetchOrder = async () => {
             try {
-                const response = await axios.get(`http://localhost:3000/orders/${id}`, {
+                const response = await axios.get(`https://order-app-backend-5362.vercel.app/orders/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setOrderDetails(response.data.order_details);
@@ -23,7 +23,7 @@ const EditOrderPage = ({ token }) => {
 
     const handleUpdate = async () => {
         try {
-            await axios.put(`http://localhost:3000/orders/${id}`, { order_details: orderDetails }, {
+            await axios.put(`https://order-app-backend-5362.vercel.app/orders/${id}`, { order_details: orderDetails }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             navigate('/orders');
@@ -34,7 +34,7 @@ const EditOrderPage = ({ token }) => {
 
     const handleDelete = async () => {
         try {
-            await axios.delete(`http://localhost:3000/orders/${id}`, {
+            await axios.delete(`https://order-app-backend-5362.vercel.app/orders/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             navigate('/orders');
