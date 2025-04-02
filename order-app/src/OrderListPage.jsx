@@ -8,7 +8,7 @@ const OrderListPage = ({ token }) => {
     useEffect(() => {
         const fetchOrders = async () => {
             try {
-                const response = await axios.get('http://localhost:3000/orders', {
+                const response = await axios.get('https://order-app-backend-5362.vercel.app/orders', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setOrders(response.data);
