@@ -74,7 +74,7 @@ const ImageGallery = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
@@ -107,14 +107,14 @@ const ImageGallery = () => {
       
       if (isAuthenticated()) {
         const token = localStorage.getItem('token');
-        response = await axios.get(`${API_BASE_URL}/api/user/images`, {
+        response = await axios.get(`${API_BASE_URL}/user/images`, {
           headers: {
             'Authorization': `Bearer ${token}`
           },
           withCredentials: true
         });
       } else {
-        response = await axios.get(`${API_BASE_URL}/api/images`, {
+        response = await axios.get(`${API_BASE_URL}/images`, {
           withCredentials: true
         });
       }
@@ -148,7 +148,7 @@ const ImageGallery = () => {
 
       setIsLoading(true);
       
-      await axios.delete(`${API_BASE_URL}/api/images/${imageId}`, {
+      await axios.delete(`${API_BASE_URL}/images/${imageId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
