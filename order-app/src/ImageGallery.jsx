@@ -6,29 +6,34 @@ const ImageGallery = () => {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [title, setTitle] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState({ message: '', type: '' });
   const [images, setImages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Check if user is authenticated
+  // API configuration - IMPORTANT: Set your correct backend URL
+  const API_BASE_URL = 'https://order-app-backend-5362.vercel.app';
+
+  // Check authentication status
   const isAuthenticated = () => {
-    return localStorage.getItem('token') !== null;
+    const token = localStorage.getItem('token');
+    return !!token;
   };
 
-  // Handle file selection
+  // Handle file selection with validation
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
 
-    // Validate file type and size
+    // Validate file type
     if (!selectedFile.type.match('image.*')) {
-      setError('Please select an image file');
+      setError('Please select an image file (JPEG, PNG, etc.)');
       return;
     }
 
-    if (selectedFile.size > 5 * 1024 * 1024) { // 5MB limit
+    // Validate file size (5MB max)
+    if (selectedFile.size > 5 * 1024 * 1024) {
       setError('File size must be less than 5MB');
       return;
     }
@@ -47,6 +52,8 @@ const ImageGallery = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setStatus({ message: '', type: '' });
+    
     if (!file || !title) {
       setError('Please select a file and enter a title');
       return;
@@ -59,8 +66,7 @@ const ImageGallery = () => {
     }
 
     setIsLoading(true);
-    setStatus('Uploading...');
-    setError('');
+    setStatus({ message: 'Uploading image...', type: 'info' });
 
     const formData = new FormData();
     formData.append('image', file);
@@ -68,56 +74,67 @@ const ImageGallery = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('/upload', formData, {
+      const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        withCredentials: true
       });
 
-      setStatus('Upload successful!');
+      setStatus({ message: 'Upload successful!', type: 'success' });
       setFile(null);
       setTitle('');
       setPreviewUrl('');
-      fetchImages(); // Refresh the gallery
+      await fetchImages(); // Refresh the gallery
     } catch (err) {
       console.error('Upload error:', err);
-      setError(err.response?.data?.error || 'Failed to upload image');
-      setStatus('Upload failed');
+      const errorMsg = err.response?.data?.error || 
+                      err.message || 
+                      'Failed to upload image';
+      setError(errorMsg);
+      setStatus({ message: 'Upload failed', type: 'error' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch images from the server
+  // Fetch images from backend
   const fetchImages = async () => {
     try {
       setIsLoading(true);
       let response;
       
       if (isAuthenticated()) {
-        // Fetch user's images if authenticated
         const token = localStorage.getItem('token');
-        response = await axios.get('/user/images', {
+        response = await axios.get(`${API_BASE_URL}/api/user/images`, {
           headers: {
             'Authorization': `Bearer ${token}`
-          }
+          },
+          withCredentials: true
         });
       } else {
-        // Fetch public images if not authenticated
-        response = await axios.get('/images');
+        response = await axios.get(`${API_BASE_URL}/api/images`, {
+          withCredentials: true
+        });
       }
       
       setImages(response.data);
     } catch (err) {
       console.error('Error fetching images:', err);
-      setError(err.response?.data?.error || 'Failed to load images');
+      
+      // Handle 404 specifically
+      if (err.response?.status === 404) {
+        setError('Images endpoint not found. Please check backend configuration.');
+      } else {
+        setError(err.response?.data?.error || 'Failed to load images');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Delete an image
+  // Handle image deletion
   const handleDelete = async (imageId, cloudinaryId) => {
     if (!window.confirm('Are you sure you want to delete this image?')) return;
 
@@ -131,22 +148,15 @@ const ImageGallery = () => {
 
       setIsLoading(true);
       
-      // First delete from Cloudinary
-      await axios.delete(`/delete-image/${cloudinaryId}`, {
+      await axios.delete(`${API_BASE_URL}/api/images/${imageId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        withCredentials: true
       });
 
-      // Then delete from our database
-      await axios.delete(`/images/${imageId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      // Refresh the gallery
-      fetchImages();
+      await fetchImages(); // Refresh the gallery
+      setStatus({ message: 'Image deleted successfully', type: 'success' });
     } catch (err) {
       console.error('Delete error:', err);
       setError(err.response?.data?.error || 'Failed to delete image');
@@ -160,6 +170,13 @@ const ImageGallery = () => {
     fetchImages();
   }, []);
 
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    fetchImages(); // Refresh to show public images
+    setStatus({ message: 'Logged out successfully', type: 'success' });
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Image Gallery</h1>
@@ -167,7 +184,6 @@ const ImageGallery = () => {
       {isAuthenticated() && (
         <div className="bg-white p-6 rounded-lg shadow-md mb-8">
           <h2 className="text-xl font-semibold mb-4">Upload New Image</h2>
-          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -211,7 +227,14 @@ const ImageGallery = () => {
               {isLoading ? 'Uploading...' : 'Upload Image'}
             </button>
             
-            {status && <p className={`mt-2 ${status.includes('success') ? 'text-green-600' : 'text-red-600'}`}>{status}</p>}
+            {status.message && (
+              <p className={`mt-2 ${
+                status.type === 'success' ? 'text-green-600' : 
+                status.type === 'error' ? 'text-red-600' : 'text-blue-600'
+              }`}>
+                {status.message}
+              </p>
+            )}
           </form>
         </div>
       )}
@@ -219,10 +242,7 @@ const ImageGallery = () => {
       <div className="mb-4">
         {isAuthenticated() ? (
           <button
-            onClick={() => {
-              localStorage.removeItem('token');
-              fetchImages(); // Refresh to show public images
-            }}
+            onClick={handleLogout}
             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
           >
             Logout
@@ -257,7 +277,7 @@ const ImageGallery = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {images.map((image) => (
                 <div key={image.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                  <div className="relative pb-[100%]"> {/* Square aspect ratio */}
+                  <div className="relative pb-[100%]">
                     <img
                       src={image.cloudinary_url}
                       alt={image.title}
