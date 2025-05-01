@@ -5,7 +5,7 @@ import RegisterPage from './RegisterPage';
 import OrderListPage from './OrderListPage';
 import CreateOrderPage from './CreateOrderPage';
 import EditOrderPage from './EditOrderPage';
-import ImageGallery from './images';
+import ImageGallery from './ImageGallery';
 
 const App = () => {
     const [token, setToken] = useState(localStorage.getItem('token') || '');
