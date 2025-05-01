@@ -5,6 +5,7 @@ import RegisterPage from './RegisterPage';
 import OrderListPage from './OrderListPage';
 import CreateOrderPage from './CreateOrderPage';
 import EditOrderPage from './EditOrderPage';
+import ImageGallery from './images';
 
 const App = () => {
     const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -19,6 +20,8 @@ const App = () => {
                     <>
                         | <Link to="/orders">Orders</Link>
                         | <Link to="/create">Create Order</Link>
+                        | <Link to="/images">Images</Link>
+                        
                     </>
                 )}
             </nav>
@@ -40,6 +43,10 @@ const App = () => {
                 <Route 
                     path="/edit/:id" 
                     element={token ? <EditOrderPage token={token} /> : <Navigate to="/login" />} 
+                />
+                <Route 
+                    path="/images" 
+                    element={token ? <ImageGallery token={token} /> : <Navigate to="/login" />} 
                 />
             </Routes>
         </Router>
