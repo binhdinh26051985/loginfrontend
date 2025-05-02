@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const ImageGallery = ({ token }) => {
     const [images, setImages] = useState([]);
@@ -8,34 +8,62 @@ const ImageGallery = ({ token }) => {
     const [title, setTitle] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const navigate = useNavigate();
 
     // Fetch user's images
     useEffect(() => {
         const fetchImages = async () => {
             try {
+                if (!token) {
+                    navigate('/login');
+                    return;
+                }
+
                 setIsLoading(true);
+                setError('');
+                
                 const response = await axios.get('https://order-app-backend-5362.vercel.app/user/images', {
-                    headers: { Authorization: `Bearer ${token}` }
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
                 });
+                
                 setImages(response.data);
             } catch (error) {
                 console.error('Failed to fetch images', error);
-                setError('Failed to load images');
+                
+                if (error.response && error.response.status === 401) {
+                    setError('Session expired. Please login again.');
+                    // Optionally clear token and redirect
+                    localStorage.removeItem('token');
+                    navigate('/login');
+                } else {
+                    setError('Failed to load images. Please try again.');
+                }
             } finally {
                 setIsLoading(false);
             }
         };
+        
         fetchImages();
-    }, [token]);
+    }, [token, navigate]);
 
     // Handle file selection
     const handleFileChange = (e) => {
         setSelectedFile(e.target.files[0]);
+        setError('');
     };
 
     // Handle image upload
     const handleUpload = async (e) => {
         e.preventDefault();
+        
+        if (!token) {
+            navigate('/login');
+            return;
+        }
+
         if (!selectedFile || !title) {
             setError('Please select a file and provide a title');
             return;
@@ -55,18 +83,23 @@ const ImageGallery = ({ token }) => {
                 {
                     headers: {
                         'Content-Type': 'multipart/form-data',
-                        Authorization: `Bearer ${token}`
+                        'Authorization': `Bearer ${token}`
                     }
                 }
             );
 
-            // Add new image to the beginning of the list
             setImages([response.data, ...images]);
             setTitle('');
             setSelectedFile(null);
         } catch (error) {
-            console.error('Failed to upload image', error);
-            setError('Failed to upload image');
+            console.error('Upload failed:', error);
+            
+            if (error.response && error.response.status === 401) {
+                setError('Session expired. Please login again.');
+                navigate('/login');
+            } else {
+                setError(error.response?.data?.error || 'Failed to upload image');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -76,6 +109,13 @@ const ImageGallery = ({ token }) => {
         <div className="container mx-auto p-4">
             <h1 className="text-2xl font-bold mb-6">Your Image Gallery</h1>
             
+            {/* Error message */}
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {error}
+                </div>
+            )}
+
             {/* Upload Form */}
             <div className="mb-8 p-4 bg-gray-100 rounded-lg">
                 <h2 className="text-xl font-semibold mb-4">Upload New Image</h2>
@@ -107,7 +147,6 @@ const ImageGallery = ({ token }) => {
                     >
                         {isLoading ? 'Uploading...' : 'Upload Image'}
                     </button>
-                    {error && <p className="text-red-500 mt-2">{error}</p>}
                 </form>
             </div>
 
@@ -130,12 +169,6 @@ const ImageGallery = ({ token }) => {
                                 <p className="text-sm text-gray-500">
                                     Uploaded: {new Date(image.created_at).toLocaleDateString()}
                                 </p>
-                                <Link 
-                                    to={`/image/${image.id}`} 
-                                    className="text-blue-500 hover:underline mt-2 inline-block"
-                                >
-                                    View Details
-                                </Link>
                             </div>
                         </div>
                     ))}
