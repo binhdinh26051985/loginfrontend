@@ -1,181 +1,217 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 
-const ImageGallery = ({ token }) => {
-    const [images, setImages] = useState([]);
-    const [selectedFile, setSelectedFile] = useState(null);
-    const [title, setTitle] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
-    const navigate = useNavigate();
+const Images = () => {
+  const [images, setImages] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [title, setTitle] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-    // Fetch user's images
-    useEffect(() => {
-        const fetchImages = async () => {
-            try {
-                if (!token) {
-                    navigate('/login');
-                    return;
-                }
+  // Get auth token from localStorage (assuming you store it there after login)
+  const token = localStorage.getItem('token');
 
-                setIsLoading(true);
-                setError('');
-                
-                const response = await axios.get('https://order-app-backend-5362.vercel.app/user/images', {
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                setImages(response.data);
-            } catch (error) {
-                console.error('Failed to fetch images', error);
-                
-                if (error.response && error.response.status === 401) {
-                    setError('Session expired. Please login again.');
-                    // Optionally clear token and redirect
-                    localStorage.removeItem('token');
-                    navigate('/login');
-                } else {
-                    setError('Failed to load images. Please try again.');
-                }
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        
-        fetchImages();
-    }, [token, navigate]);
-
-    // Handle file selection
-    const handleFileChange = (e) => {
-        setSelectedFile(e.target.files[0]);
-        setError('');
-    };
-
-    // Handle image upload
-    const handleUpload = async (e) => {
-        e.preventDefault();
-        
-        if (!token) {
-            navigate('/login');
-            return;
+  // Fetch user's images
+  const fetchImages = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get('https://order-app-backend-three.vercel.app/images', {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
+      });
+      setImages(response.data);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to fetch images');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-        if (!selectedFile || !title) {
-            setError('Please select a file and provide a title');
-            return;
+  useEffect(() => {
+    fetchImages();
+  }, []);
+
+  // Handle file selection
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
+
+  // Upload image
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!selectedFile || !title) {
+      setError('Please select a file and enter a title');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const formData = new FormData();
+      formData.append('image', selectedFile);
+      formData.append('title', title);
+
+      await axios.post('https://order-app-backend-three.vercel.app/upload-image', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
         }
+      });
 
-        try {
-            setIsLoading(true);
-            setError('');
+      setSuccess('Image uploaded successfully');
+      setTitle('');
+      setSelectedFile(null);
+      document.getElementById('fileInput').value = ''; // Reset file input
+      fetchImages(); // Refresh the list
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to upload image');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-            const formData = new FormData();
-            formData.append('image', selectedFile);
-            formData.append('title', title);
+  // Delete image
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this image?')) return;
 
-            const response = await axios.post(
-                'https://order-app-backend-5362.vercel.app/upload',
-                formData,
-                {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
-            );
-
-            setImages([response.data, ...images]);
-            setTitle('');
-            setSelectedFile(null);
-        } catch (error) {
-            console.error('Upload failed:', error);
-            
-            if (error.response && error.response.status === 401) {
-                setError('Session expired. Please login again.');
-                navigate('/login');
-            } else {
-                setError(error.response?.data?.error || 'Failed to upload image');
-            }
-        } finally {
-            setIsLoading(false);
+    try {
+      setIsLoading(true);
+      await axios.delete(`https://order-app-backend-three.vercel.app/images/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-    };
+      });
 
-    return (
-        <div className="container mx-auto p-4">
-            <h1 className="text-2xl font-bold mb-6">Your Image Gallery</h1>
-            
-            {/* Error message */}
-            {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                    {error}
-                </div>
-            )}
+      setSuccess('Image deleted successfully');
+      fetchImages(); // Refresh the list
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete image');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-            {/* Upload Form */}
-            <div className="mb-8 p-4 bg-gray-100 rounded-lg">
-                <h2 className="text-xl font-semibold mb-4">Upload New Image</h2>
-                <form onSubmit={handleUpload} className="space-y-4">
-                    <div>
-                        <label className="block mb-2">Title:</label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full p-2 border rounded"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block mb-2">Image:</label>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="w-full p-2 border rounded"
-                            required
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
-                    >
-                        {isLoading ? 'Uploading...' : 'Upload Image'}
-                    </button>
-                </form>
-            </div>
+  // Update title
+  const handleUpdateTitle = async (id, newTitle) => {
+    try {
+      setIsLoading(true);
+      await axios.put(
+        `https://order-app-backend-three.vercel.app/images/${id}/title`,
+        { title: newTitle },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-            {/* Image Gallery */}
-            {isLoading && images.length === 0 ? (
-                <p>Loading images...</p>
-            ) : images.length === 0 ? (
-                <p>No images uploaded yet.</p>
-            ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {images.map((image) => (
-                        <div key={image.id} className="border rounded-lg overflow-hidden shadow">
-                            <img
-                                src={image.cloudinary_url}
-                                alt={image.title}
-                                className="w-full h-48 object-cover"
-                            />
-                            <div className="p-4">
-                                <h3 className="font-semibold">{image.title}</h3>
-                                <p className="text-sm text-gray-500">
-                                    Uploaded: {new Date(image.created_at).toLocaleDateString()}
-                                </p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+      setSuccess('Title updated successfully');
+      fetchImages(); // Refresh the list
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update title');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">My Images</h1>
+
+      {/* Success/Error messages */}
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          {success}
         </div>
-    );
+      )}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
+      {/* Upload Form */}
+      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h2 className="text-xl font-semibold mb-4">Upload New Image</h2>
+        <form onSubmit={handleUpload}>
+          <div className="mb-4">
+            <label className="block text-gray-700 mb-2" htmlFor="title">
+              Title
+            </label>
+            <input
+              type="text"
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 mb-2" htmlFor="fileInput">
+              Image
+            </label>
+            <input
+              type="file"
+              id="fileInput"
+              onChange={handleFileChange}
+              className="w-full px-3 py-2 border rounded"
+              accept="image/*"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+          >
+            {isLoading ? 'Uploading...' : 'Upload Image'}
+          </button>
+        </form>
+      </div>
+
+      {/* Image Gallery */}
+      {isLoading && !images.length ? (
+        <p>Loading images...</p>
+      ) : images.length === 0 ? (
+        <p className="text-gray-500">No images found. Upload your first image!</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {images.map((image) => (
+            <div key={image.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+              <img
+                src={image.image_url}
+                alt={image.title}
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-4">
+                <div className="flex items-center mb-2">
+                  <input
+                    type="text"
+                    value={image.title}
+                    onChange={(e) => handleUpdateTitle(image.id, e.target.value)}
+                    onBlur={(e) => handleUpdateTitle(image.id, e.target.value)}
+                    className="flex-1 px-2 py-1 border rounded mr-2"
+                  />
+                </div>
+                <button
+                  onClick={() => handleDelete(image.id)}
+                  disabled={isLoading}
+                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
-export default ImageGallery;
+export default Images;
