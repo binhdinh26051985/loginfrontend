@@ -5,7 +5,7 @@ import RegisterPage from './RegisterPage';
 import OrderListPage from './OrderListPage';
 import CreateOrderPage from './CreateOrderPage';
 import EditOrderPage from './EditOrderPage';
-import ImageGallery from './ImageGallery';
+import Images from './ImageGallery';
 
 const App = () => {
     const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -46,7 +46,7 @@ const App = () => {
                 />
                 <Route 
                     path="/images" 
-                    element={token ? <ImageGallery token={token} /> : <Navigate to="/login" />} 
+                    element={token ? <Images token={token} /> : <Navigate to="/login" />} 
                 />
             </Routes>
         </Router>
